@@ -16,7 +16,7 @@ app.use((req, res, next) => {
 const CONSUMER_KEY = "vJkP76ozIxQzD3QnPJUGBCnVjTtkr5QK6g5MwAGMGGEKAlmp";
 const CONSUMER_SECRET = "DbBVaSy2ADcyLPACeEECAQXTjX2HBzu6NEF2vXduurXzQlV8JLNxSixaVAGqciVHg";
 const PASSKEY = "aaf9e6dbd80cd3d15ca74dbdf5052c918b551a37aff60a26cdaac38db2d7d2f0";
-const SHORT_CODE = "8142825"; // Till number (Buy Goods)
+const SHORT_CODE = "4574431"; // HO Number
 const OAUTH_URL = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
 const STK_PUSH_URL = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
 
@@ -110,10 +110,12 @@ app.post("/stk-push", async (req, res) => {
       message: "STK Push sent successfully. Waiting for customer to enter PIN.",
     });
   } catch (error) {
-    console.error("STK Push error:", error.response?.data || error.message);
+    const errData = error.response?.data || error.message;
+    console.error("STK Push error:", JSON.stringify(errData));
     res.status(500).json({
       success: false,
-      error: error.response?.data || error.message,
+      error: errData,
+      details: error.response?.data
     });
   }
 });
