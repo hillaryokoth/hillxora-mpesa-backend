@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: hillxora-mpesa-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: RENDER_URL
+        sync: false
