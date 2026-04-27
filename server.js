@@ -51,6 +51,20 @@ app.get("/", (req, res) => {
   res.json({ status: "Hillxora Homes M-PESA Backend is running ✅" });
 });
 
+// ─── ROUTE: TEST ACCESS TOKEN ─────────────────────────────────────────────────
+app.get("/test-token", async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    res.json({ success: true, token: token.substring(0, 20) + "..." });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.response?.data || error.message,
+      status: error.response?.status
+    });
+  }
+});
+
 // ─── ROUTE: INITIATE STK PUSH ─────────────────────────────────────────────────
 // Called from your Android app
 // POST /stk-push
