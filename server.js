@@ -26,10 +26,15 @@ const transactions = {};
 // ─── HELPER: GET ACCESS TOKEN ─────────────────────────────────────────────────
 async function getAccessToken() {
   const credentials = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
-  const response = await axios.get(OAUTH_URL, {
-    headers: { Authorization: `Basic ${credentials}` },
-  });
-  return response.data.access_token;
+  try {
+    const response = await axios.get(OAUTH_URL, {
+      headers: { Authorization: `Basic ${credentials}` },
+    });
+    return response.data.access_token;
+  } catch (error) {
+    console.error("OAuth Token Error:", error.response?.data || error.message);
+    throw error;
+  }
 }
 
 // ─── HELPER: GENERATE TIMESTAMP ──────────────────────────────────────────────
@@ -57,8 +62,8 @@ app.get("/test-token", async (req, res) => {
     const token = await getAccessToken();
     res.json({ success: true, token: token.substring(0, 20) + "..." });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.response?.data || error.message,
       status: error.response?.status
     });
@@ -66,9 +71,6 @@ app.get("/test-token", async (req, res) => {
 });
 
 // ─── ROUTE: INITIATE STK PUSH ─────────────────────────────────────────────────
-// Called from your Android app
-// POST /stk-push
-// Body: { phone: "2547XXXXXXXX", amount: 1000, accountRef: "RENT-123" }
 app.post("/stk-push", async (req, res) => {
   try {
     const { phone, amount, accountRef } = req.body;
@@ -77,19 +79,21 @@ app.post("/stk-push", async (req, res) => {
       return res.status(400).json({ error: "phone, amount and accountRef are required" });
     }
 
+    // Task 2: Ensure Amount is a strict integer
+    const strictAmount = parseInt(amount);
+
     const token = await getAccessToken();
-    const timestamp = getTimestamp();
+    const timestamp = getTimestamp(); // Task 2: Single timestamp for both password and body
     const password = Buffer.from(`${SHORT_CODE}${PASSKEY}${timestamp}`).toString("base64");
 
-    // Use your Render URL as callback - update this after deploying
-    const callbackUrl = `${process.env.RENDER_URL || "https://your-app.onrender.com"}/callback`;
+    const callbackUrl = `${process.env.RENDER_URL || "https://hillxora-mpesa-backend.onrender.com"}/callback`;
 
     const payload = {
       BusinessShortCode: SHORT_CODE,
       Password: password,
       Timestamp: timestamp,
       TransactionType: "CustomerPayBillOnline",
-      Amount: amount,
+      Amount: strictAmount, // Task 2: Strict integer
       PartyA: phone,
       PartyB: SHORT_CODE,
       PhoneNumber: phone,
@@ -98,6 +102,8 @@ app.post("/stk-push", async (req, res) => {
       TransactionDesc: "Rent Payment - Hillxora Homes",
     };
 
+    console.log("Sending STK Push Payload:", JSON.stringify(payload, null, 2));
+
     const response = await axios.post(STK_PUSH_URL, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -105,13 +111,15 @@ app.post("/stk-push", async (req, res) => {
       },
     });
 
+    // Task 1: Expose Raw Response
+    console.log("Safaricom Raw Response:", JSON.stringify(response.data, null, 2));
+
     const checkoutRequestId = response.data.CheckoutRequestID;
 
-    // Store transaction as pending
     transactions[checkoutRequestId] = {
       status: "PENDING",
       phone,
-      amount,
+      amount: strictAmount,
       accountRef,
       timestamp: new Date().toISOString(),
     };
@@ -121,23 +129,28 @@ app.post("/stk-push", async (req, res) => {
     res.json({
       success: true,
       checkoutRequestId,
-      message: "STK Push sent successfully. Waiting for customer to enter PIN.",
+      message: response.data.CustomerMessage || "STK Push sent successfully. Waiting for customer to enter PIN.",
     });
   } catch (error) {
-    const errData = error.response?.data || error.message;
-    console.error("STK Push error:", JSON.stringify(errData));
+    // Task 3: Error Handling Refactor
+    const errData = error.response?.data || { message: error.message };
+    console.error("STK Push error details:", JSON.stringify(errData, null, 2));
+    
+    // Extracting the real cause (e.g., ResultDesc or errorMessage)
+    const specificError = errData.errorMessage || errData.ResultDesc || "Failed to initiate payment";
+    
     res.status(500).json({
       success: false,
-      error: errData,
-      details: error.response?.data
+      error: specificError,
+      details: errData
     });
   }
 });
 
 // ─── ROUTE: SAFARICOM CALLBACK ────────────────────────────────────────────────
-// Safaricom calls this URL after customer enters PIN
 app.post("/callback", (req, res) => {
   try {
+    console.log("Callback received:", JSON.stringify(req.body, null, 2));
     const body = req.body;
     const stkCallback = body?.Body?.stkCallback;
 
@@ -150,7 +163,6 @@ app.post("/callback", (req, res) => {
     const resultDesc = stkCallback.ResultDesc;
 
     if (resultCode === 0) {
-      // Payment successful
       const items = stkCallback.CallbackMetadata?.Item || [];
       const amount = items.find((i) => i.Name === "Amount")?.Value;
       const mpesaCode = items.find((i) => i.Name === "MpesaReceiptNumber")?.Value;
@@ -167,7 +179,6 @@ app.post("/callback", (req, res) => {
 
       console.log(`✅ Payment SUCCESS - Code: ${mpesaCode} | Amount: ${amount}`);
     } else {
-      // Payment failed or cancelled
       transactions[checkoutRequestId] = {
         ...transactions[checkoutRequestId],
         status: "FAILED",
@@ -186,8 +197,6 @@ app.post("/callback", (req, res) => {
 });
 
 // ─── ROUTE: CHECK TRANSACTION STATUS ─────────────────────────────────────────
-// Your Android app polls this to know if payment was successful
-// GET /transaction/:checkoutRequestId
 app.get("/transaction/:checkoutRequestId", (req, res) => {
   const { checkoutRequestId } = req.params;
   const transaction = transactions[checkoutRequestId];
