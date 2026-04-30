@@ -16,7 +16,8 @@ app.use((req, res, next) => {
 const CONSUMER_KEY = "vJkP76ozIxQzD3QnPJUGBCnVjTtkr5QK6g5MwAGMGGEKAlmp";
 const CONSUMER_SECRET = "DbBVaSy2ADcyLPACeEECAQXTjX2HBzu6NEF2vXduuXzQlV8JLNxSixaVAGqciVHg";
 const PASSKEY = "aaf9e6dbd80cd3d15ca74dbdf5052c918b551a37aff60a26cdaac38db2d7d2f0";
-const SHORT_CODE = "4574431"; // Business Short Code from Safaricom
+const SHORT_CODE = "4574431"; // Your Business Short Code (Store/Organization)
+const TILL_NUMBER = "5414043"; // Your M-PESA Till Number
 const OAUTH_URL = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
 const STK_PUSH_URL = "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
 
@@ -93,17 +94,17 @@ app.post("/stk-push", async (req, res) => {
     const callbackUrl = `${process.env.RENDER_URL || "https://hillxora-mpesa-backend.onrender.com"}/callback`;
 
     const payload = {
-      BusinessShortCode: SHORT_CODE,
+      BusinessShortCode: SHORT_CODE, // The Store ID / Org Shortcode
       Password: password,
       Timestamp: timestamp,
-      TransactionType: transactionType || (SHORT_CODE.length > 6 ? "CustomerBuyGoodsOnline" : "CustomerPayBillOnline"),
-      Amount: strictAmount, // Task 2: Strict integer
+      TransactionType: "CustomerBuyGoodsOnline", // Forced for Till Number
+      Amount: strictAmount,
       PartyA: phone,
-      PartyB: SHORT_CODE,
+      PartyB: TILL_NUMBER, // The actual Till Number
       PhoneNumber: phone,
       CallBackURL: callbackUrl,
       AccountReference: accountRef.replace(/[^a-zA-Z0-9]/g, "").substring(0, 12),
-      TransactionDesc: "RentPayment".substring(0, 13), // Fixed length for Safaricom
+      TransactionDesc: "RentPayment".substring(0, 13),
     };
 
     console.log("Sending STK Push Payload:", JSON.stringify(payload, null, 2));
