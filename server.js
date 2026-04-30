@@ -96,13 +96,13 @@ app.post("/stk-push", async (req, res) => {
       BusinessShortCode: SHORT_CODE,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: transactionType || "CustomerPayBillOnline",
+      TransactionType: transactionType || (SHORT_CODE.length > 6 ? "CustomerBuyGoodsOnline" : "CustomerPayBillOnline"),
       Amount: strictAmount, // Task 2: Strict integer
       PartyA: phone,
       PartyB: SHORT_CODE,
       PhoneNumber: phone,
       CallBackURL: callbackUrl,
-      AccountReference: accountRef.replace(/\s/g, "").substring(0, 12),
+      AccountReference: accountRef.replace(/[^a-zA-Z0-9]/g, "").substring(0, 12),
       TransactionDesc: "RentPayment".substring(0, 13), // Fixed length for Safaricom
     };
 
