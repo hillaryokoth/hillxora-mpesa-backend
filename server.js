@@ -14,7 +14,7 @@ app.use((req, res, next) => {
 
 // ─── CONFIGURATION ───────────────────────────────────────────────────────────
 const CONSUMER_KEY = "vJkP76ozIxQzD3QnPJUGBCnVjTtkr5QK6g5MwAGMGGEKAlmp";
-const CONSUMER_SECRET = "DbBVaSy2ADcyLPACeEECAQXTjX2HBzu6NEF2vXduurXzQlV8JLNxSixaVAGqciVHg";
+const CONSUMER_SECRET = "DbBVaSy2ADcyLPACeEECAQXTjX2HBzu6NEF2vXduuXzQlV8JLNxSixaVAGqciVHg";
 const PASSKEY = "aaf9e6dbd80cd3d15ca74dbdf5052c918b551a37aff60a26cdaac38db2d7d2f0";
 const SHORT_CODE = "4574431"; // Business Short Code from Safaricom
 const OAUTH_URL = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
