@@ -39,15 +39,19 @@ async function getAccessToken() {
 
 // ─── HELPER: GENERATE TIMESTAMP ──────────────────────────────────────────────
 function getTimestamp() {
+  // Safaricom requires East African Time (GMT+3)
   const now = new Date();
+  const eatOffset = 3 * 60; // 3 hours in minutes
+  const eatTime = new Date(now.getTime() + (eatOffset + now.getTimezoneOffset()) * 60000);
+  
   const pad = (n) => String(n).padStart(2, "0");
   return (
-    now.getFullYear().toString() +
-    pad(now.getMonth() + 1) +
-    pad(now.getDate()) +
-    pad(now.getHours()) +
-    pad(now.getMinutes()) +
-    pad(now.getSeconds())
+    eatTime.getFullYear().toString() +
+    pad(eatTime.getMonth() + 1) +
+    pad(eatTime.getDate()) +
+    pad(eatTime.getHours()) +
+    pad(eatTime.getMinutes()) +
+    pad(eatTime.getSeconds())
   );
 }
 
@@ -73,7 +77,7 @@ app.get("/test-token", async (req, res) => {
 // ─── ROUTE: INITIATE STK PUSH ─────────────────────────────────────────────────
 app.post("/stk-push", async (req, res) => {
   try {
-    const { phone, amount, accountRef } = req.body;
+    const { phone, amount, accountRef, transactionType } = req.body;
 
     if (!phone || !amount || !accountRef) {
       return res.status(400).json({ error: "phone, amount and accountRef are required" });
@@ -92,14 +96,14 @@ app.post("/stk-push", async (req, res) => {
       BusinessShortCode: SHORT_CODE,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: "CustomerPayBillOnline",
+      TransactionType: transactionType || "CustomerPayBillOnline",
       Amount: strictAmount, // Task 2: Strict integer
       PartyA: phone,
       PartyB: SHORT_CODE,
       PhoneNumber: phone,
       CallBackURL: callbackUrl,
-      AccountReference: accountRef,
-      TransactionDesc: "Rent Payment - Hillxora Homes",
+      AccountReference: accountRef.replace(/\s/g, "").substring(0, 12),
+      TransactionDesc: "RentPayment".substring(0, 13), // Fixed length for Safaricom
     };
 
     console.log("Sending STK Push Payload:", JSON.stringify(payload, null, 2));
