@@ -89,23 +89,23 @@ app.post("/stk-push", async (req, res) => {
 
     const token = await getAccessToken();
     const timestamp = getTimestamp();
-    // For Till Numbers, BusinessShortCode in password and payload is usually the Till Number itself
-    const password = Buffer.from(`${TILL_NUMBER}${PASSKEY}${timestamp}`).toString("base64");
+    // Use SHORT_CODE (4574431) for password/auth, TILL_NUMBER (5414043) for receiving money
+    const password = Buffer.from(`${SHORT_CODE}${PASSKEY}${timestamp}`).toString("base64");
 
     const callbackUrl = `${process.env.RENDER_URL || "https://hillxora-mpesa-backend.onrender.com"}/callback`;
 
     const payload = {
-      BusinessShortCode: TILL_NUMBER,
+      BusinessShortCode: SHORT_CODE, // The Store ID / Org Shortcode
       Password: password,
       Timestamp: timestamp,
       TransactionType: "CustomerBuyGoodsOnline",
       Amount: strictAmount,
       PartyA: phone,
-      PartyB: TILL_NUMBER,
+      PartyB: TILL_NUMBER, // The actual Till Number
       PhoneNumber: phone,
       CallBackURL: callbackUrl,
       AccountReference: accountRef.replace(/[^a-zA-Z0-9]/g, "").substring(0, 12) || "Rent",
-      TransactionDesc: "Rent", // Simplified to absolute minimum
+      TransactionDesc: "Rent",
     };
 
     console.log("Sending STK Push Payload:", JSON.stringify(payload, null, 2));
